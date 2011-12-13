@@ -185,13 +185,15 @@ def _register(params, model, app_label):
                     % (field_names[1], model.__name__, perm))
 
 
-            field = models.ManyToManyField(User, 
+            field = models.ManyToManyField(User,
+                null=True,
                 verbose_name=('User "%s" permission' % perm),
                 help_text=params['perms'][perm].get('description', ''),
                 related_name=('perm_%s_%s_set' % (_perm, _model_name)),
                 )
             field.contribute_to_class(model, field_names[0])
             field = models.ManyToManyField(Group, 
+                null=True,
                 verbose_name=('Group "%s" permission' % perm),
                 help_text=params['perms'][perm].get('description', ''),
                 related_name=('perm_%s_%s_set' % (_perm, _model_name)),
