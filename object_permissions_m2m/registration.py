@@ -588,7 +588,7 @@ def user_has_perm(user, perm, obj, groups=True):
         q |= Q(**group_lookup)
 
     q &= Q(pk=user.pk)
-    return User.objects.filter(q)
+    return User.objects.filter(q).exists()
 
 
 def group_has_perm(group, perm, obj):
