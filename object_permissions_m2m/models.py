@@ -1,6 +1,6 @@
 from django.contrib.auth.models import Group
 
-from object_permissions_m2m import register
+from object_permissions_m2m.registration import register
 
 # register internal perms
 GROUP_PARAMS = {
