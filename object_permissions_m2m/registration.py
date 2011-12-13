@@ -643,6 +643,10 @@ def user_has_any_perms(user, obj, perms=None, groups=True):
 
     _model_name = model.__name__.lower()
 
+    if len(perms) == 0:
+        # if we have no perms to look for, return False!
+        return False
+
     q = Q()
     for perm in perms:
         _perm = perm.lower()
@@ -664,9 +668,6 @@ def user_has_any_perms(user, obj, perms=None, groups=True):
             q |= Q(**{ lookup_key : False })
             if groups:
                 q |= Q(**{ 'groups__%s' % lookup_key : False })
-    else:
-        # if we have no perms to look for, return False!
-        return False
 
     q &= Q(pk=user.pk)
     return User.objects.filter(q).exists()
@@ -690,6 +691,10 @@ def group_has_any_perms(group, obj, perms=None):
     else:
         perms = get_model_perms(model)
 
+    if len(perms) == 0:
+        # if we have no perms to look for, return False!
+        return False
+
     _model_name = model.__name__.lower()
     q = Q()
     for perm in perms:
@@ -709,9 +714,6 @@ def group_has_any_perms(group, obj, perms=None):
                     _model_name,
                 )
             q |= Q(**{ lookup_key : False })
-    else:
-        # if we have no perms to look for, return False!
-        return False
 
     q &= Q(pk=group.pk)
     return Group.objects.filter(q).exists()
@@ -742,6 +744,10 @@ def user_has_all_perms(user, obj, perms, groups=True):
     if instance:
         # limit query results to the instance passed in
         q &= Q(pk=obj.pk)
+    
+    if len(perms) == 0:
+        # if we have no perms to look for, return False!
+        return False
 
     for perm in perms:
         _perm = perm.lower()
@@ -753,9 +759,6 @@ def user_has_all_perms(user, obj, perms, groups=True):
         if groups:
             _q |= Q(**{ lookup_keys[1] : user })
         q &= _q
-    else:
-        # if we have no perms to look for, return False!
-        return False
 
     return model.objects.filter(q).exists()
 
@@ -785,6 +788,10 @@ def group_has_all_perms(group, obj, perms):
             )
     else:
         perms = get_model_perms(model)
+    
+    if len(perms) == 0:
+        # if we have no perms to look for, return False!
+        return False
 
     # have to make sure at least 1 instance of model exists
     # such that all of the perms specified are assigned
@@ -798,9 +805,6 @@ def group_has_all_perms(group, obj, perms):
         _perm = perm.lower()
         lookup_key = 'group_perm_%s' % ( _perm, )
         q &= Q(**{ lookup_key : group })
-    else:
-        # if we have no perms to look for, return False!
-        return False
 
     return model.objects.filter(q).exists()
 
@@ -823,6 +827,10 @@ def get_users_any(obj, perms=None, groups=True):
             )
     else:
         perms = get_model_perms(model)
+    
+    if len(perms) == 0:
+        # if we have no perms to look for, return an EmptyQuerySet!
+        return User.objects.none()
 
     _model_name = model.__name__.lower()
     q = Q()
@@ -836,9 +844,6 @@ def get_users_any(obj, perms=None, groups=True):
         q |= Q(**{ lookup_key : obj })
         if groups:
             q |= Q(**{ 'groups__%s' % lookup_key : obj })
-    else:
-        # if we have no perms to look for, return an EmptyQuerySet!
-        return User.objects.none()
 
     return User.objects.filter(q).distinct()
 
@@ -865,6 +870,9 @@ def get_users_all(obj, perms, groups=True):
     else:
         perms = get_model_perms(model)
 
+    if len(perms) == 0:
+        # if we have no perms to look for, return an EmptyQuerySet!
+        return User.objects.none()
 
     # have to make sure at least 1 instance of model exists
     # such that all of the perms specified are assigned
@@ -899,9 +907,6 @@ def get_users_all(obj, perms, groups=True):
                 _q |= Q(**{ '%s__isnull' % lookup_keys[1] : False })
 
         q &= _q
-    else:
-        # if we have no perms to look for, return an EmptyQuerySet!
-        return User.objects.none()
     
     users = User.objects.filter(q)
     if instance:
@@ -960,6 +965,10 @@ def get_groups_any(obj, perms=None):
             )
     else:
         perms = get_model_perms(model)
+    
+    if len(perms) == 0:
+        # if we have no perms to look for, return an EmptyQuerySet!
+        return Group.objects.none()
 
     _model_name = model.__name__.lower()
     q = Q()
@@ -980,9 +989,6 @@ def get_groups_any(obj, perms=None):
                     _model_name,
                 )
             q |= Q(**{ lookup_key : False })
-    else:
-        # if we have no perms to look for, return an EmptyQuerySet!
-        return Group.objects.none()
 
     return Group.objects.filter(q)
 
@@ -1008,6 +1014,9 @@ def get_groups_all(obj, perms):
     else:
         perms = get_model_perms(model)
 
+    if len(perms) == 0:
+        # if we have no perms to look for, return an EmptyQuerySet!
+        return Group.objects.none()
 
     # have to make sure at least 1 instance of model exists
     # such that all of the perms specified are assigned
@@ -1029,9 +1038,6 @@ def get_groups_all(obj, perms):
             q &= Q(**{ lookup_key : obj })
         else:
             q &= Q(**{ '%s__isnull' % lookup_key : False })
-    else:
-        # if we have no perms to look for, return an EmptyQuerySet!
-        return Group.objects.none()
     
     groups = Group.objects.filter(q)
     if instance:
@@ -1115,6 +1121,10 @@ def user_get_objects_any_perms(user, model, perms=None, groups=True, **related):
             )
     else:
         perms = get_model_perms(model)
+    
+    if len(perms) == 0:
+        # if we have no perms to look for, return an EmptyQuerySet!
+        return model.objects.none()
 
     q = Q()
     for perm in perms:
@@ -1122,9 +1132,6 @@ def user_get_objects_any_perms(user, model, perms=None, groups=True, **related):
         q |= Q(**{ 'user_perm_%s' % _perm : user })
         if groups:
             q |= Q(**{ 'group_perm_%s__user' % _perm : user })
-    else:
-        # if we have no perms to look for, return an EmptyQuerySet!
-        return model.objects.none()
     
     # related fields are built as sub-clauses for each related field.  To follow
     # the relation we must add a clause that follows the relationship path to
@@ -1167,14 +1174,15 @@ def group_get_objects_any_perms(group, model, perms=None, **related):
             )
     else:
         perms = get_model_perms(model)
+    
+    if len(perms) == 0:
+        # if we have no perms to look for, return an EmptyQuerySet!
+        return model.objects.none()
 
     q = Q()
     for perm in perms:
         _perm = perm.lower()
         q |= Q(**{ 'group_perm_%s' % _perm : group })
-    else:
-        # if we have no perms to look for, return an EmptyQuerySet!
-        return model.objects.none()
     
     # related fields are built as sub-clauses for each related field.  To follow
     # the relation we must add a clause that follows the relationship path to
@@ -1216,6 +1224,10 @@ def user_get_objects_all_perms(user, model, perms, groups=True, **related):
     else:
         perms = get_model_perms(model)
 
+    if len(perms) == 0:
+        # if we have no perms to look for, return an EmptyQuerySet!
+        return model.objects.none()
+
     q = Q()
     for perm in perms:
         _perm = perm.lower()
@@ -1224,9 +1236,6 @@ def user_get_objects_all_perms(user, model, perms, groups=True, **related):
             _q |= Q(**{ 'group_perm_%s__user' % _perm : user })
         
         q &= _q
-    else:
-        # if we have no perms to look for, return an EmptyQuerySet!
-        return model.objects.none()
     
     # related fields are built as sub-clauses for each related field.  To follow
     # the relation we must add a clause that follows the relationship path to
@@ -1270,14 +1279,15 @@ def group_get_objects_all_perms(group, model, perms, **related):
             )
     else:
         perms = get_model_perms(model)
+    
+    if len(perms) == 0:
+        # if we have no perms to look for, return an EmptyQuerySet!
+        return model.objects.none()
 
     q = Q()
     for perm in perms:
         _perm = perm.lower()
         q &= Q(**{ 'group_perm_%s' % _perm : group })
-    else:
-        # if we have no perms to look for, return an EmptyQuerySet!
-        return model.objects.none()
     
     # related fields are built as sub-clauses for each related field.  To follow
     # the relation we must add a clause that follows the relationship path to
