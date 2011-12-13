@@ -1,0 +1,1 @@
+recursive-include object_permissions_m2m *.py *.png *.js
