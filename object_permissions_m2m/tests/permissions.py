@@ -269,7 +269,14 @@ class TestModelPermissions(TestCase):
         # remove perms
         set_user_perms(user0, perms4, object0)
         self.assertEqual(perms4, get_user_perms(user0, object0))
-        self.assertFalse(user0.TestModel_uperms.filter(obj=object0).exists())
+        self.assertFalse(User.objects.filter(pk=user0.pk,
+            perm_perm1_testmodel_set__isnull=False).exists())
+        self.assertFalse(User.objects.filter(pk=user0.pk,
+            perm_perm2_testmodel_set__isnull=False).exists())
+        self.assertFalse(User.objects.filter(pk=user0.pk,
+            perm_perm3_testmodel_set__isnull=False).exists())
+        self.assertFalse(User.objects.filter(pk=user0.pk,
+            perm_perm4_testmodel_set__isnull=False).exists())
         self.assertEqual([], get_user_perms(user0, object1))
         self.assertEqual([], get_user_perms(user1, object0))
         
@@ -743,9 +750,11 @@ class TestModelPermissions(TestCase):
         child0 = TestModelChild.objects.create(parent=object0)
         child1 = TestModelChild.objects.create(parent=object0)
         child2 = TestModelChild.objects.create(parent=object1)
+        child3 = TestModelChild.objects.create(parent=object1)
         child0.save()
         child1.save()
         child2.save()
+        child3.save()
         
         childchild = TestModelChildChild.objects.create(parent=child0)
         childchild.save()
@@ -757,14 +766,16 @@ class TestModelPermissions(TestCase):
         user0.grant('Perm1', child0)
         user0.grant('Perm1', child1)
         user0.grant('Perm2', child1)
+        user0.grant('Perm1', child3)
         user0.grant('Perm1', childchild)
         
         # related field with single perms
         query = user0.get_objects_all_perms(TestModelChild, perms=['Perm1'], parent=['Perm1'])
-        self.assertEqual(2, len(query))
+        self.assertEqual(3, len(query))
         self.assertTrue(child0 in query)
         self.assertTrue(child1 in query)
         self.assertFalse(child2 in query)
+        self.assertTrue(child3 in query)
         
         # related field with single perms - has parent but not child
         query = user0.get_objects_all_perms(TestModelChild, perms=['Perm4'], parent=['Perm1'])
@@ -778,8 +789,9 @@ class TestModelPermissions(TestCase):
         query = user0.get_objects_all_perms(TestModelChild, perms=['Perm1'], parent=['Perm1','Perm2'])
         self.assertEqual(1, len(query))
         self.assertFalse(child0 in query)
-        self.assertTrue(child1 in query)
+        self.assertFalse(child1 in query)
         self.assertFalse(child2 in query)
+        self.assertTrue(child3 in query)
         
         # multiple relations
         query = user0.get_objects_all_perms(TestModelChildChild, perms=['Perm1'], parent=['Perm1'], parent__parent=['Perm1'])

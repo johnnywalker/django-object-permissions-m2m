@@ -272,7 +272,9 @@ class TestGroups(TestCase):
         # remove perms
         set_group_perms(group0, perms4, object0)
         self.assertEqual(perms4, get_group_perms(group0, object0))
-        self.assertFalse(group0.TestModel_gperms.filter(obj=object0).exists())
+        self.assertFalse(group0.perm_perm1_testmodel_set.filter(pk=object0.pk).exists())
+        self.assertFalse(group0.perm_perm2_testmodel_set.filter(pk=object0.pk).exists())
+        self.assertFalse(group0.perm_perm3_testmodel_set.filter(pk=object0.pk).exists())
         self.assertEqual([], get_group_perms(group0, object1))
         self.assertEqual([], get_group_perms(group1, object0))
         
@@ -742,9 +744,11 @@ class TestGroups(TestCase):
         child0 = TestModelChild.objects.create(parent=object0)
         child1 = TestModelChild.objects.create(parent=object0)
         child2 = TestModelChild.objects.create(parent=object1)
+        child3 = TestModelChild.objects.create(parent=object1)
         child0.save()
         child1.save()
         child2.save()
+        child3.save()
         
         childchild = TestModelChildChild.objects.create(parent=child0)
         childchild.save()
@@ -760,13 +764,15 @@ class TestGroups(TestCase):
         
         user0.grant('Perm1', object0)  # perms on both
         user0.grant('Perm1', child0)   # perms on both
+        user0.grant('Perm1', child3)
         
         # related field with single perms
         query = user0.get_objects_all_perms(TestModelChild, perms=['Perm1'], parent=['Perm1'])
-        self.assertEqual(2, len(query))
+        self.assertEqual(3, len(query))
         self.assertTrue(child0 in query)
         self.assertTrue(child1 in query)
         self.assertFalse(child2 in query)
+        self.assertTrue(child3 in query)
         
         # related field with single perms - has parent but not child
         query = user0.get_objects_all_perms(TestModelChild, perms=['Perm4'], parent=['Perm1'])
@@ -780,8 +786,9 @@ class TestGroups(TestCase):
         query = user0.get_objects_all_perms(TestModelChild, perms=['Perm1'], parent=['Perm1','Perm2'])
         self.assertEqual(1, len(query))
         self.assertFalse(child0 in query)
-        self.assertTrue(child1 in query)
+        self.assertFalse(child1 in query)
         self.assertFalse(child2 in query)
+        self.assertTrue(child3 in query)
         
         # multiple relations
         query = user0.get_objects_all_perms(TestModelChildChild, perms=['Perm1'], parent=['Perm1'], parent__parent=['Perm1'])
@@ -1053,9 +1060,11 @@ class TestGroups(TestCase):
         child0 = TestModelChild.objects.create(parent=object0)
         child1 = TestModelChild.objects.create(parent=object0)
         child2 = TestModelChild.objects.create(parent=object1)
+        child3 = TestModelChild.objects.create(parent=object1)
         child0.save()
         child1.save()
         child2.save()
+        child3.save()
         
         childchild = TestModelChildChild.objects.create(parent=child0)
         childchild.save()
@@ -1067,14 +1076,17 @@ class TestGroups(TestCase):
         group0.grant('Perm1', child0)
         group0.grant('Perm1', child1)
         group0.grant('Perm2', child1)
+        group0.grant('Perm1', child3)
+        group0.grant('Perm2', child3)
         group0.grant('Perm1', childchild)
         
         # related field with single perms
         query = group0.get_objects_all_perms(TestModelChild, perms=['Perm1'], parent=['Perm1'])
-        self.assertEqual(2, len(query))
+        self.assertEqual(3, len(query))
         self.assertTrue(child0 in query)
         self.assertTrue(child1 in query)
         self.assertFalse(child2 in query)
+        self.assertTrue(child3 in query)
         
         # related field with single perms - has parent but not child
         query = group0.get_objects_all_perms(TestModelChild, perms=['Perm4'], parent=['Perm1'])
@@ -1088,8 +1100,9 @@ class TestGroups(TestCase):
         query = group0.get_objects_all_perms(TestModelChild, perms=['Perm1'], parent=['Perm1','Perm2'])
         self.assertEqual(1, len(query))
         self.assertFalse(child0 in query)
-        self.assertTrue(child1 in query)
+        self.assertFalse(child1 in query)
         self.assertFalse(child2 in query)
+        self.assertTrue(child3 in query)
         
         # multiple relations
         query = group0.get_objects_all_perms(TestModelChildChild, perms=['Perm1'], parent=['Perm1'], parent__parent=['Perm1'])

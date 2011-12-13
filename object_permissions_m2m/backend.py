@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models, IntegrityError
+from django.db.models import Q
 from django.contrib.auth.models import User
 
 from object_permissions_m2m.registration import user_has_perm, get_model_perms
@@ -68,9 +69,9 @@ class ObjectPermBackend(object):
 
         for perm in perms:
             q = Q(**{ 
-                'user_perm_%s__user' % perm : user,
+                'user_perm_%s' % perm : user_obj,
             }) | Q(**{
-                'group_perm_%s__user_set__user' % perm : user,
+                'group_perm_%s__user' % perm : user_obj,
             })
             if model.objects.filter(q).exists():
                 user_perms.append(perm)

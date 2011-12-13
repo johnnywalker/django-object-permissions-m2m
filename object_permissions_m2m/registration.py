@@ -163,10 +163,17 @@ def _register(params, model, app_label):
             warn("Tried to double-register %s for permissions!" % model)
             return
 
+        _model_name = model.__name__.lower()
+
         for perm in params['perms']:
             # create a ManyToManyField for each permission
             # field names follow this pattern: "user/group_perm_[perm name]"
-            field_names = ('user_perm_%s' % perm, 'group_perm_%s' % perm)
+            _perm = perm.lower()
+            field_names = (
+                'user_perm_%s' % _perm, 
+                'group_perm_%s' % _perm,
+                )
+
             existing_field_names = model._meta.get_all_field_names()
             if field_names[0] in existing_field_names:
                 raise RegistrationException('Cannot contribute ManyToManyField '
@@ -177,20 +184,19 @@ def _register(params, model, app_label):
                     'named %s to %s for permission "%s" - field already exists' \
                     % (field_names[1], model.__name__, perm))
 
+
             field = models.ManyToManyField(User, 
                 verbose_name=('User "%s" permission' % perm),
                 help_text=params['perms'][perm].get('description', ''),
-                related_name=('perm_%s_%s_set' % (perm.lower(), model.__name__.lower())),
+                related_name=('perm_%s_%s_set' % (_perm, _model_name)),
                 )
-            field.contribute_to_class(model,
-                field_names[0])
+            field.contribute_to_class(model, field_names[0])
             field = models.ManyToManyField(Group, 
                 verbose_name=('Group "%s" permission' % perm),
                 help_text=params['perms'][perm].get('description', ''),
-                related_name=('perm_%s_%s_set' % (perm.lower(), model.__name__.lower())),
+                related_name=('perm_%s_%s_set' % (_perm, _model_name)),
                 )
-            field.contribute_to_class(model,
-                field_names[1])
+            field.contribute_to_class(model, field_names[1])
 
         registered.append(model)
         permissions_for_model[model] = params['perms']
@@ -269,14 +275,16 @@ def grant(user, perm, obj):
     Grant a permission to a User.
     """
 
-    field_name = 'user_perm_%s' % perm
+    _perm = perm.lower()
+
+    field_name = 'user_perm_%s' % _perm
     
     try:
         manager = getattr(obj, field_name)
     except AttributeError:
         raise UnknownPermissionException(perm)
 
-    if manager.filter(user=user).count() == 0:
+    if manager.filter(pk=user.pk).count() == 0:
         manager.add(user)
 
         granted.send(sender=user, perm=perm, object=obj)
@@ -287,14 +295,16 @@ def grant_group(group, perm, obj):
     Grant a permission to a Group.
     """
 
-    field_name = 'group_perm_%s' % perm
+    _perm = perm.lower()
+
+    field_name = 'group_perm_%s' % _perm
     
     try:
         manager = getattr(obj, field_name)
     except AttributeError:
         raise UnknownPermissionException(perm)
 
-    if manager.filter(group=group).count() == 0:
+    if manager.filter(pk=group.pk).count() == 0:
         manager.add(group)
 
         granted.send(sender=group, perm=perm, object=obj)
@@ -312,8 +322,10 @@ def set_user_perms(user, perms, obj):
             all_perms[perm] = True
 
         for perm in all_perms:
-            manager = getattr(obj, 'user_perm_%s' % perm)
-            filtered = manager.filter(user=user)
+            _perm = perm.lower()
+
+            manager = getattr(obj, 'user_perm_%s' % _perm)
+            filtered = manager.filter(pk=user.pk)
             if not all_perms[perm] and filtered.count() > 0:
                 manager.remove(user)
                 revoked.send(sender=user, perm=perm, object=obj)
@@ -340,8 +352,11 @@ def set_group_perms(group, perms, obj):
             all_perms[perm] = True
     
         for perm in all_perms:
-            manager = getattr(obj, 'group_perm_%s' % perm)
-            filtered = manager.filter(group=group)
+            _perm = perm.lower()
+
+            manager = getattr(obj, 'group_perm_%s' % _perm)
+
+            filtered = manager.filter(pk=group.pk)
             if not all_perms[perm] and filtered.count() > 0:
                 manager.remove(group)
                 revoked.send(sender=group, perm=perm, object=obj)
@@ -361,8 +376,14 @@ def revoke(user, perm, obj):
     Revoke a permission from a User.
     """
 
-    manager = getattr(obj, 'user_perm_%s' % perm)
-    if manager.filter(user=user).count() > 0:
+    _perm = perm.lower()
+
+    try:
+        manager = getattr(obj, 'user_perm_%s' % _perm)
+    except AttributeError:
+        # means this perm doesn't exist, fail silently
+        return
+    if manager.filter(pk=user.pk).count() > 0:
         manager.remove(user)
         revoked.send(sender=user, perm=perm, object=obj)
     
@@ -372,8 +393,14 @@ def revoke_group(group, perm, obj):
     Revokes a permission from a Group.
     """
 
-    manager = getattr(obj, 'group_perm_%s' % perm)
-    if manager.filter(group=group).count() > 0:
+    _perm = perm.lower()
+
+    try:
+        manager = getattr(obj, 'group_perm_%s' % _perm)
+    except AttributeError:
+        # means this perm doesn't exist, fail silently
+        return
+    if manager.filter(pk=group.pk).count() > 0:
         manager.remove(group)
         revoked.send(sender=group, perm=perm, object=obj)
     
@@ -387,8 +414,10 @@ def revoke_all(user, obj):
     perms = get_model_perms(model)
 
     for perm in perms:
-        manager = getattr(obj, 'user_perm_%s' % perm)
-        if manager.filter(user=user).count() > 0:
+        _perm = perm.lower()
+
+        manager = getattr(obj, 'user_perm_%s' % _perm)
+        if manager.filter(pk=user.pk).count() > 0:
             manager.remove(user)
             revoked.send(sender=user, perm=perm, object=obj)
 
@@ -401,8 +430,10 @@ def revoke_all_group(group, obj):
     perms = get_model_perms(model)
 
     for perm in perms:
-        manager = getattr(obj, 'group_perm_%s' % perm)
-        if manager.filter(group=group).count() > 0:
+        _perm = perm.lower()
+
+        manager = getattr(obj, 'group_perm_%s' % _perm)
+        if manager.filter(pk=group.pk).count() > 0:
             manager.remove(group)
             revoked.send(sender=group, perm=perm, object=obj)
 
@@ -417,8 +448,12 @@ def get_user_perms(user, obj, groups=True):
     user_perms = []
 
     for perm in perms:
-        manager = getattr(obj, 'user_perm_%s' % perm)
-        if manager.filter(user=user).count() > 0:
+        _perm = perm.lower()
+        q = Q(**{ 'user_perm_%s' % _perm : user })
+        if groups:
+            q |= Q(**{ 'group_perm_%s__user' % _perm : user })
+
+        if model.objects.filter(pk=obj.pk).filter(q).count() > 0:
             user_perms.append(perm)
     
     return user_perms
@@ -433,11 +468,15 @@ def get_user_perms_any(user, klass, groups=True):
 
     user_perms = []
     for perm in perms:
-        manager = getattr(user, 'perm_%s_%s_set' % \
-            (perm, klass.__name__.lower()))
-        if manager.count() > 0:
-            user_perms.append(perm)
+        _perm = perm.lower()
         
+        q = Q(**{ 'user_perm_%s' % _perm : user })
+        if groups:
+            q |= Q(**{ 'group_perm_%s__user' % _perm : user })
+
+        if klass.objects.filter(q).count() > 0:
+            user_perms.append(perm)
+    
     return user_perms
 
 
@@ -454,9 +493,11 @@ def get_group_perms(group, obj, groups=True):
     group_perms = []
 
     for perm in perms:
-        manager = getattr(obj, 'group_perm_%s' % perm)
-        if manager.filter(group=group).count() > 0:
-            group_perms.apend(perm)
+        _perm = perm.lower()
+
+        manager = getattr(obj, 'group_perm_%s' % _perm)
+        if manager.filter(pk=group.pk).count() > 0:
+            group_perms.append(perm)
     
     return group_perms
 
@@ -466,12 +507,16 @@ def get_group_perms_any(group, klass):
     return permission types that the user has on a given Model
     """
 
+    _model_name = klass.__name__.lower()
+
     perms = get_model_perms(klass)
 
     group_perms = []
     for perm in perms:
+        _perm = perm.lower()
+
         manager = getattr(group, 'perm_%s_%s_set' % \
-            (perm, klass.__name__.lower()))
+            (_perm, _model_name))
         if manager.count() > 0:
             group_perms.append(perm)
         
@@ -521,8 +566,11 @@ def user_has_perm(user, perm, obj, groups=True):
         # not a valid permission
         return False
 
-    lookup_key = 'perm_%s_%s_set__%s' % \
-        (perm, model.__name__.lower(), model.__name__.lower())
+    _model_name = model.__name__.lower()
+    _perm = perm.lower()
+
+    lookup_key = 'perm_%s_%s_set' % \
+        (_perm, _model_name)
 
     user_lookup = {
         lookup_key : obj,
@@ -535,7 +583,7 @@ def user_has_perm(user, perm, obj, groups=True):
     if groups:
         q |= Q(**group_lookup)
 
-    q &= Q(user=user)
+    q &= Q(pk=user.pk)
     return User.objects.filter(q)
 
 
@@ -559,8 +607,10 @@ def group_has_perm(group, perm, obj):
         # not a valid permission
         return False
 
-    manager = getattr(obj, 'group_perm_%s' % perm)
-    return manager.filter(group=group).exists()
+    _perm = perm.lower()
+
+    manager = getattr(obj, 'group_perm_%s' % _perm)
+    return manager.filter(pk=group.pk).exists()
 
 
 def user_has_any_perms(user, obj, perms=None, groups=True):
@@ -578,21 +628,31 @@ def user_has_any_perms(user, obj, perms=None, groups=True):
     else:
         perms = get_model_perms(model)
 
+    _model_name = model.__name__.lower()
+
     q = Q()
     for perm in perms:
-        lookup_key = 'perm_%s_%s_set__%s' % \
-            (
-                perm,
-                model.__name__.lower(), 
-                model.__name__.lower(),
-            )
-        if groups:
-            q |= Q(**{ lookup_key : obj }) | \
-                 Q(**{ 'groups__%s' % lookup_key : obj })
-        else:
+        _perm = perm.lower()
+        if instance:
+            lookup_key = 'perm_%s_%s_set' % \
+                (
+                    _perm,
+                    _model_name,
+                )
             q |= Q(**{ lookup_key : obj })
+            if groups:
+                q |= Q(**{ 'groups__%s' % lookup_key : obj })
+        else:
+            lookup_key = 'perm_%s_%s_set__isnull' % \
+                (
+                    _perm,
+                    _model_name,
+                )
+            q |= Q(**{ lookup_key : False })
+            if groups:
+                q |= Q(**{ 'groups__%s' % lookup_key : False })
 
-    q &= Q(user=user)
+    q &= Q(pk=user.pk)
     return User.objects.filter(q).exists()
 
 
@@ -611,17 +671,27 @@ def group_has_any_perms(group, obj, perms=None):
     else:
         perms = get_model_perms(model)
 
+    _model_name = model.__name__.lower()
     q = Q()
     for perm in perms:
-        lookup_key = 'perm_%s_%s_set__%s' % \
-            (
-                perm,
-                model.__name__.lower(), 
-                model.__name__.lower(),
-            )
-        q |= Q(**{ lookup_key : obj })
+        _perm = perm.lower()
 
-    q &= Q(group=group)
+        if instance:
+            lookup_key = 'perm_%s_%s_set' % \
+                (
+                    _perm,
+                    _model_name,
+                )
+            q |= Q(**{ lookup_key : obj })
+        else:
+            lookup_key = 'perm_%s_%s_set__isnull' % \
+                (
+                    _perm,
+                    _model_name,
+                )
+            q |= Q(**{ lookup_key : False })
+
+    q &= Q(pk=group.pk)
     return Group.objects.filter(q).exists()
 
 
@@ -640,23 +710,26 @@ def user_has_all_perms(user, obj, perms, groups=True):
     else:
         perms = get_model_perms(model)
 
+    # have to make sure at least 1 instance of model exists
+    # such that all of the perms specified are assigned
+    # to this user
     q = Q()
-    for perm in perms:
-        lookup_key = 'perm_%s_%s_set__%s' % \
-            (
-                perm,
-                model.__name__.lower(), 
-                model.__name__.lower(),
-            )
-        _q = Q(**{ lookup_key : obj })
-        if groups:
-            _q |= Q(**{ 'groups__%s' % lookup_key : obj })
+    if instance:
+        # limit query results to the instance passed in
+        q &= Q(pk=obj.pk)
 
+    for perm in perms:
+        _perm = perm.lower()
+        lookup_keys = (
+            'user_perm_%s' % ( _perm, ),
+            'group_perm_%s__user' % ( _perm, ),
+            )
+        _q = Q(**{ lookup_keys[0] : user })
+        if groups:
+            _q |= Q(**{ lookup_keys[1] : user })
         q &= _q
 
-    q &= Q(user=user)
-
-    return User.objects.filter(q).exists()
+    return model.objects.filter(q).exists()
 
 
 def group_has_all_perms(group, obj, perms):
@@ -682,18 +755,20 @@ def group_has_all_perms(group, obj, perms):
     else:
         perms = get_model_perms(model)
 
+    # have to make sure at least 1 instance of model exists
+    # such that all of the perms specified are assigned
+    # to this user
     q = Q()
-    for perm in perms:
-        lookup_key = 'perm_%s_%s_set__%s' % \
-            (
-                perm,
-                model.__name__.lower(), 
-                model.__name__.lower(),
-            )
-        q &= Q(**{ lookup_key : obj })
+    if instance:
+        # limit query results to the instance passed in
+        q &= Q(pk=obj.pk)
 
-    q &= Q(group=group)
-    return Group.objects.filter(q).exists()
+    for perm in perms:
+        _perm = perm.lower()
+        lookup_key = 'group_perm_%s' % ( _perm, )
+        q &= Q(**{ lookup_key : group })
+
+    return model.objects.filter(q).exists()
 
     
 def get_users_any(obj, perms=None, groups=True):
@@ -712,13 +787,14 @@ def get_users_any(obj, perms=None, groups=True):
     else:
         perms = get_model_perms(model)
 
+    _model_name = model.__name__.lower()
     q = Q()
     for perm in perms:
-        lookup_key = 'perm_%s_%s_set__%s' % \
+        _perm = perm.lower()
+        lookup_key = 'perm_%s_%s_set' % \
             (
-                perm,
-                model.__name__.lower(), 
-                model.__name__.lower(),
+                _perm,
+                _model_name,
             )
         q |= Q(**{ lookup_key : obj })
         if groups:
@@ -746,21 +822,68 @@ def get_users_all(obj, perms, groups=True):
     else:
         perms = get_model_perms(model)
 
+
+    # have to make sure at least 1 instance of model exists
+    # such that all of the perms specified are assigned
+    # to this user
+    #q = Q()
+    #if instance:
+    #    # limit query results to the instance passed in
+    #    q &= Q(pk=obj.pk)
+
+    _model_name = model.__name__.lower()
+
+    # cache perm lookup keys
+    perm_keys = []
+
     q = Q()
     for perm in perms:
-        lookup_key = 'perm_%s_%s_set__%s' % \
-            (
-                perm,
-                model.__name__.lower(), 
-                model.__name__.lower(),
+        _perm = perm.lower()
+        lookup_keys = (
+            'perm_%s_%s_set' % ( _perm, _model_name ),
+            'groups__perm_%s_%s_set' % ( _perm, _model_name ),
             )
-        _q = Q(**{ lookup_key : obj })
-        if groups:
-            _q |= Q(**{ 'groups__%s' % lookup_key : obj })
+        # cache lookup key
+        perm_keys.append(lookup_keys[0])
+
+        if instance:
+            _q = Q(**{ lookup_keys[0] : obj })
+            if groups:
+                _q |= Q(**{ lookup_keys[1] : obj })
+        else:
+            _q = Q(**{ '%s__isnull' % lookup_keys[0] : False })
+            if groups:
+                _q |= Q(**{ '%s__isnull' % lookup_keys[1] : False })
 
         q &= _q
+    
+    users = User.objects.filter(q)
+    if instance:
+        return users
+    else:
+        # since we are checking for users that have all perms on at
+        # least 1 instance of 'model', we need to filter out the users
+        # that have a matching model instance in every perm set
 
-    return User.objects.filter(q)
+        users_with_matches = []
+        for u in users.select_related():
+            instances = []
+            for k in perm_keys:
+                _inst = set(getattr(u, k).values_list('pk', flat=True))
+                if groups:
+                    for g in u.groups:
+                        _inst |= set(
+                            getattr(g, k).values_list('pk', flat=True)
+                            )
+                instances.append(_inst)
+            if len(instances) > 0:
+                inter = instances[0]
+                for i in instances[1:]:
+                    inter &= i
+                if len(inter) > 0:
+                    # we have a good user!
+                    users_with_matches.append(u)
+        return users_with_matches
 
 
 def get_users(obj, groups=True):
@@ -789,15 +912,25 @@ def get_groups_any(obj, perms=None):
     else:
         perms = get_model_perms(model)
 
+    _model_name = model.__name__.lower()
     q = Q()
     for perm in perms:
-        lookup_key = 'perm_%s_%s_set__%s' % \
-            (
-                perm,
-                model.__name__.lower(), 
-                model.__name__.lower(),
-            )
-        q |= Q(**{ lookup_key : obj })
+        _perm = perm.lower()
+
+        if instance:
+            lookup_key = 'perm_%s_%s_set' % \
+                (
+                    _perm,
+                    _model_name,
+                )
+            q |= Q(**{ lookup_key : obj })
+        else:
+            lookup_key = 'perm_%s_%s_set__isnull' % \
+                (
+                    _perm,
+                    _model_name,
+                )
+            q |= Q(**{ lookup_key : False })
 
     return Group.objects.filter(q)
 
@@ -820,19 +953,53 @@ def get_groups_all(obj, perms):
     else:
         perms = get_model_perms(model)
 
-    q = Group.objects
+
+    # have to make sure at least 1 instance of model exists
+    # such that all of the perms specified are assigned
+    # to this group
+
+    _model_name = model.__name__.lower()
+
+    # cache perm lookup keys
+    perm_keys = []
+
+    q = Q()
     for perm in perms:
-        lookup_key = 'perm_%s_%s_set__%s' % \
-            (
-                perm,
-                model.__name__.lower(), 
-                model.__name__.lower(),
-            )
-        q = q.filter(**{ lookup_key : obj })
+        _perm = perm.lower()
+        lookup_key = 'perm_%s_%s_set' % ( _perm, _model_name )
+        # cache lookup key
+        perm_keys.append(lookup_key)
 
-    return q
-
+        if instance:
+            q &= Q(**{ lookup_key : obj })
+        else:
+            q &= Q(**{ '%s__isnull' % lookup_key : False })
     
+    groups = Group.objects.filter(q)
+    if instance:
+        return groups
+    else:
+        # since we are checking for users that have all perms on at
+        # least 1 instance of 'model', we need to filter out the users
+        # that have a matching model instance in every perm set
+
+        groups_with_matches = []
+        for g in groups.select_related():
+            instances = []
+            for k in perm_keys:
+                instances.append(
+                    set(getattr(g, k).values_list('pk', flat=True))
+                    )
+            if len(instances) > 0:
+                inter = instances[0]
+                for i in instances[1:]:
+                    inter &= i
+                if len(inter) > 0:
+                    # we have a good group!
+                    groups_with_matches.append(g)
+        return groups_with_matches
+
+
 def get_groups(obj):
     """
     Retrieve the list of Users that have permissions on the given object.
@@ -890,9 +1057,10 @@ def user_get_objects_any_perms(user, model, perms=None, groups=True, **related):
 
     q = Q()
     for perm in perms:
-        q |= Q(**{ 'user_perm_%s__user' % perm : user })
+        _perm = perm.lower()
+        q |= Q(**{ 'user_perm_%s' % _perm : user })
         if groups:
-            q |= Q(**{ 'group_perm_%s__user_set__user' % perm : user })
+            q |= Q(**{ 'group_perm_%s__user' % _perm : user })
     
     # related fields are built as sub-clauses for each related field.  To follow
     # the relation we must add a clause that follows the relationship path to
@@ -905,10 +1073,11 @@ def user_get_objects_any_perms(user, model, perms=None, groups=True, **related):
                 raise NotImplementedError('Perms must be specified for related fields')
 
             for perm in perms:
-                q |= Q(**{ '%s__user_perm_%s__user' % (field, perm) : user })
+                _perm = perm.lower()
+                q |= Q(**{ '%s__user_perm_%s' % (field, _perm) : user })
                 if groups:
-                    q |= Q(**{ '%s__group_perm_%s__user_set__user' % \
-                        (field, perm) : user })
+                    q |= Q(**{ '%s__group_perm_%s__user' % \
+                        (field, _perm) : user })
 
     return model.objects.filter(q).distinct()
 
@@ -934,7 +1103,8 @@ def group_get_objects_any_perms(group, model, perms=None, **related):
 
     q = Q()
     for perm in perms:
-        q |= Q(**{ 'group_perm_%s__group' % perm : group })
+        _perm = perm.lower()
+        q |= Q(**{ 'group_perm_%s' % _perm : group })
     
     # related fields are built as sub-clauses for each related field.  To follow
     # the relation we must add a clause that follows the relationship path to
@@ -947,8 +1117,9 @@ def group_get_objects_any_perms(group, model, perms=None, **related):
                 raise NotImplementedError('Perms must be specified for related fields')
 
             for perm in perms:
-                q |= Q(**{ '%s__group_perm_%s__group' % \
-                    (field, perm) : group })
+                _perm = perm.lower()
+                q |= Q(**{ '%s__group_perm_%s' % \
+                    (field, _perm) : group })
 
     return model.objects.filter(q).distinct()
 
@@ -974,9 +1145,10 @@ def user_get_objects_all_perms(user, model, perms, groups=True, **related):
 
     q = Q()
     for perm in perms:
-        _q = Q(**{ 'user_perm_%s__user' % perm : user })
+        _perm = perm.lower()
+        _q = Q(**{ 'user_perm_%s' % _perm : user })
         if groups:
-            _q |= Q(**{ 'group_perm_%s__user_set__user' % perm : user })
+            _q |= Q(**{ 'group_perm_%s__user' % _perm : user })
         
         q &= _q
     
@@ -991,10 +1163,11 @@ def user_get_objects_all_perms(user, model, perms, groups=True, **related):
                 raise NotImplementedError('Perms must be specified for related fields')
 
             for perm in perms:
-                _q = Q(**{ '%s__user_perm_%s__user' % (field, perm) : user })
+                _perm = perm.lower()
+                _q = Q(**{ '%s__user_perm_%s' % (field, _perm) : user })
                 if groups:
-                    _q |= Q(**{ '%s__group_perm_%s__user_set__user' % \
-                        (field, perm) : user })
+                    _q |= Q(**{ '%s__group_perm_%s__user' % \
+                        (field, _perm) : user })
                 q &= _q
 
     return model.objects.filter(q).distinct()
@@ -1021,7 +1194,8 @@ def group_get_objects_all_perms(group, model, perms, **related):
 
     q = Q()
     for perm in perms:
-        q &= Q(**{ 'group_perm_%s__group' % perm : group })
+        _perm = perm.lower()
+        q &= Q(**{ 'group_perm_%s' % _perm : group })
     
     # related fields are built as sub-clauses for each related field.  To follow
     # the relation we must add a clause that follows the relationship path to
@@ -1034,7 +1208,8 @@ def group_get_objects_all_perms(group, model, perms, **related):
                 raise NotImplementedError('Perms must be specified for related fields')
 
             for perm in perms:
-                q &= Q(**{ '%s__group_perm_%s__group' % (field, perm) : group })
+                _perm = perm.lower()
+                q &= Q(**{ '%s__group_perm_%s' % (field, _perm) : group })
 
     return model.objects.filter(q).distinct()
 
