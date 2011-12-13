@@ -1,7 +1,7 @@
 Django Object Permissions (Many-To-Many Version)
 ========================================
 
-This is a fork of Django Object Permissions [web site](http://code.osuosl.org/projects/object-permissions),
+This is a fork of [Django Object Permissions](http://code.osuosl.org/projects/object-permissions),
 which is an implementation of row level permissions. The primary difference
 between this fork and the original is the use of ManyToManyField contributions
 to registered models. Like the original, this app provides an authentication
