@@ -9,7 +9,8 @@ from object_permissions_m2m.registration import TestModel, TestModelChild, \
 from object_permissions_m2m.signals import view_edit_user
 
 
-__all__ = ('TestGroups','TestGroupViews')
+#__all__ = ('TestGroups','TestGroupViews')
+__all__ = ('TestGroups',)
 
 
 # XXX set global vars to keep tests cleaner

@@ -155,33 +155,33 @@ class TestModelPermissions(TestCase):
         superUser.save()
 
         # should have access
-        self.assertTrue(superUser.has_perm('Perm1', object0))
-        self.assertTrue(superUser.has_perm('Perm1', object1))
-        self.assertTrue(superUser.has_perm('Perm2', object0))
-        self.assertTrue(superUser.has_perm('Perm2', object1))
-        self.assertTrue(superUser.has_perm('Perm3', object0))
-        self.assertTrue(superUser.has_perm('Perm3', object1))
-        self.assertTrue(superUser.has_perm('Perm4', object0))
-        self.assertTrue(superUser.has_perm('Perm4', object1))
+        self.assertTrue(superUser.has_object_perm('Perm1', object0))
+        self.assertTrue(superUser.has_object_perm('Perm1', object1))
+        self.assertTrue(superUser.has_object_perm('Perm2', object0))
+        self.assertTrue(superUser.has_object_perm('Perm2', object1))
+        self.assertTrue(superUser.has_object_perm('Perm3', object0))
+        self.assertTrue(superUser.has_object_perm('Perm3', object1))
+        self.assertTrue(superUser.has_object_perm('Perm4', object0))
+        self.assertTrue(superUser.has_object_perm('Perm4', object1))
 
         # other users should not have access
-        self.assertFalse(user1.has_perm('Perm1', object0))
+        self.assertFalse(user1.has_object_perm('Perm1', object0))
         
         # shouldn't raise an error
         grant(superUser, 'Perm1', object0)
         
         # nothing should have changed
-        self.assertTrue(superUser.has_perm('Perm1', object0))
+        self.assertTrue(superUser.has_object_perm('Perm1', object0))
         
         # should not have any invalid perms
-        self.assertFalse(superUser.has_perm('InvalidPerm', object0))
+        self.assertFalse(superUser.has_object_perm('InvalidPerm', object0))
 
         # should return all objects of type
-        query = user0.get_objects_all_perms(TestModel, ['Perm1', 'Perm2', 'Perm3', 'Perm4'])
+        query = superUser.get_objects_all_perms(TestModel, ['Perm1', 'Perm2', 'Perm3', 'Perm4'])
         self.assertEqual(2, query.count())
         self.assertTrue(object0 in query)
         self.assertTrue(object1 in query)
-        query = user0.get_objects_any_perms(TestModel, ['Perm1', 'Perm2', 'Perm3', 'Perm4'])
+        query = superUser.get_objects_any_perms(TestModel, ['Perm1', 'Perm2', 'Perm3', 'Perm4'])
         self.assertEqual(2, query.count())
         self.assertTrue(object0 in query)
         self.assertTrue(object1 in query)
