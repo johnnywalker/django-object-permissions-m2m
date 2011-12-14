@@ -33,8 +33,6 @@ class TestModelPermissions(TestCase):
         user0.save()
         user1 = User(id=3, username='tester2')
         user1.save()
-        superUser = User(id=4, username='supertester', is_superuser=True)
-        superUser.save()
         
         object0 = TestModel.objects.create(name='test0')
         object0.save()
@@ -712,13 +710,13 @@ class TestModelPermissions(TestCase):
         user0.grant('Perm4', child2)   # perm on child only
         user0.grant('Perm1', childchild)
         
-        # related field with implicit perms
-        query = user0.get_objects_any_perms(TestModelChild, parent=None)
-        self.assertEqual(3, len(query))
-        self.assertTrue(child0 in query, 'user should have perms on parent and directly')
-        self.assertTrue(child1 in query, 'user should have perms on parent')
-        self.assertTrue(child2 in query, 'user should have perms on parent, and directly')
-        self.assertFalse(child3 in query, 'user should have no perms on this object or its parent')
+#        # related field with implicit perms
+#        query = user0.get_objects_any_perms(TestModelChild, parent=None)
+#        self.assertEqual(3, len(query))
+#        self.assertTrue(child0 in query, 'user should have perms on parent and directly')
+#        self.assertTrue(child1 in query, 'user should have perms on parent')
+#        self.assertTrue(child2 in query, 'user should have perms on parent, and directly')
+#        self.assertFalse(child3 in query, 'user should have no perms on this object or its parent')
         
         # related field with single perms
         query = user0.get_objects_any_perms(TestModelChild, parent=['Perm3'])
@@ -1120,165 +1118,165 @@ class TestModelPermissions(TestCase):
         self.assertTrue(user_has_all_perms(user0, object0, ['Perm3']))
 
 
-class TestPermissionViews(TestCase):
-    """ tests for user specific test views """
+#class TestPermissionViews(TestCase):
+#    """ tests for user specific test views """
+#    
+#    def setUp(self):
+#        self.tearDown()
+#        global user0, user1, superuser, obj, c
+#
+#        user0 = User(id=2, username='tester0')
+#        user0.set_password('secret')
+#        user0.save()
+#        user1 = User(id=3, username='tester1')
+#        user1.set_password('secret')
+#        user1.save()
+#        superuser = User(id=4, username='superuser', is_superuser=True)
+#        superuser.set_password('secret')
+#        superuser.save()
+#        
+#        obj = TestModel.objects.create(name='test')
+#
+#        c = Client()
+#    
+#    def tearDown(self):
+#        TestModel.objects.all().delete()
+#        User.objects.all().delete()
+#    
+#    def test_permissions_all(self):
+#        """ tests view for returning all permissions across all objects """
+#        url = '/user/%s/permissions/all'
+#        
+#        # anonymous user
+#        response = c.get(url % user1.pk, follow=True)
+#        self.assertEqual(200, response.status_code)
+#        self.assertTemplateUsed(response, 'registration/login.html')
+#        
+#        # unauthorized user
+#        self.assertTrue(c.login(username=user0.username, password='secret'))
+#        response = c.get(url % user1.pk)
+#        self.assertEqual(403, response.status_code)
+#        
+#        # unknown user
+#        user0.is_superuser = True
+#        user0.save()
+#        response = c.get(url % 123456)
+#        self.assertEqual(404, response.status_code)
+#        
+#        # superuser
+#        response = c.get(url % user1.pk)
+#        self.assertEqual(200, response.status_code)
+#        self.assertTemplateUsed(response, 'object_permissions/permissions/objects.html')
     
-    def setUp(self):
-        self.tearDown()
-        global user0, user1, superuser, obj, c
+#    def test_permissions_generic_add(self):
+#        """
+#        Tests adding permissions to a new object using the generic perm view
+#        """
+#        url = '/user/%s/permissions/%s/'
+#        args = (user1.pk, 'TestModel')
+#        
+#        # anonymous user
+#        response = c.get(url % args, follow=True)
+#        self.assertEqual(200, response.status_code)
+#        self.assertTemplateUsed(response, 'registration/login.html')
+#        
+#        # unauthorized user
+#        self.assertTrue(c.login(username=user0.username, password='secret'))
+#        response = c.get(url % args)
+#        self.assertEqual(403, response.status_code)
+#        
+#        # invalid class
+#        self.assertTrue(c.login(username=superuser.username, password='secret'))
+#        response = c.get(url % (user1.pk, 'DoesNotExist'))
+#        self.assertEqual(404, response.status_code)
+#        
+#        # invalid user
+#        response = c.get(url % (-1, 'TestModel'))
+#        self.assertEqual(404, response.status_code)
+#        
+#        # GET - success
+#        response = c.get(url % args)
+#        self.assertEqual(200, response.status_code)
+#        self.assertTemplateUsed(response, 'object_permissions/permissions/form.html')
+#        
+#        # POST - no perms
+#        data = {'user':user1.pk, 'obj':obj.pk}
+#        response = c.post(url % args, data)
+#        self.assertEqual(200, response.status_code)
+#        self.assertEquals('application/json', response['content-type'])
+#        self.assertEqual([], user1.get_perms(obj))
+#        
+#        # POST - no object
+#        data = {'user':user1.pk, 'permissions':['Perm1']}
+#        response = c.post(url % args, data)
+#        self.assertEqual(200, response.status_code)
+#        self.assertEquals('application/json', response['content-type'])
+#        self.assertEqual([], user1.get_perms(obj))
+#        
+#        # POST - success
+#        data = {'user':user1.pk, 'permissions':['Perm1'], 'obj':obj.pk}
+#        response = c.post(url % args, data)
+#        self.assertEqual(200, response.status_code)
+#        self.assertTemplateUsed(response, 'object_permissions/permissions/object_row.html')
+#        self.assertEqual(['Perm1'], user1.get_perms(obj))
 
-        user0 = User(id=2, username='tester0')
-        user0.set_password('secret')
-        user0.save()
-        user1 = User(id=3, username='tester1')
-        user1.set_password('secret')
-        user1.save()
-        superuser = User(id=4, username='superuser', is_superuser=True)
-        superuser.set_password('secret')
-        superuser.save()
-        
-        obj = TestModel.objects.create(name='test')
-
-        c = Client()
-    
-    def tearDown(self):
-        TestModel.objects.all().delete()
-        User.objects.all().delete()
-    
-    def test_permissions_all(self):
-        """ tests view for returning all permissions across all objects """
-        url = '/user/%s/permissions/all'
-        
-        # anonymous user
-        response = c.get(url % user1.pk, follow=True)
-        self.assertEqual(200, response.status_code)
-        self.assertTemplateUsed(response, 'registration/login.html')
-        
-        # unauthorized user
-        self.assertTrue(c.login(username=user0.username, password='secret'))
-        response = c.get(url % user1.pk)
-        self.assertEqual(403, response.status_code)
-        
-        # unknown user
-        user0.is_superuser = True
-        user0.save()
-        response = c.get(url % 123456)
-        self.assertEqual(404, response.status_code)
-        
-        # superuser
-        response = c.get(url % user1.pk)
-        self.assertEqual(200, response.status_code)
-        self.assertTemplateUsed(response, 'object_permissions/permissions/objects.html')
-    
-    def test_permissions_generic_add(self):
-        """
-        Tests adding permissions to a new object using the generic perm view
-        """
-        url = '/user/%s/permissions/%s/'
-        args = (user1.pk, 'TestModel')
-        
-        # anonymous user
-        response = c.get(url % args, follow=True)
-        self.assertEqual(200, response.status_code)
-        self.assertTemplateUsed(response, 'registration/login.html')
-        
-        # unauthorized user
-        self.assertTrue(c.login(username=user0.username, password='secret'))
-        response = c.get(url % args)
-        self.assertEqual(403, response.status_code)
-        
-        # invalid class
-        self.assertTrue(c.login(username=superuser.username, password='secret'))
-        response = c.get(url % (user1.pk, 'DoesNotExist'))
-        self.assertEqual(404, response.status_code)
-        
-        # invalid user
-        response = c.get(url % (-1, 'TestModel'))
-        self.assertEqual(404, response.status_code)
-        
-        # GET - success
-        response = c.get(url % args)
-        self.assertEqual(200, response.status_code)
-        self.assertTemplateUsed(response, 'object_permissions/permissions/form.html')
-        
-        # POST - no perms
-        data = {'user':user1.pk, 'obj':obj.pk}
-        response = c.post(url % args, data)
-        self.assertEqual(200, response.status_code)
-        self.assertEquals('application/json', response['content-type'])
-        self.assertEqual([], user1.get_perms(obj))
-        
-        # POST - no object
-        data = {'user':user1.pk, 'permissions':['Perm1']}
-        response = c.post(url % args, data)
-        self.assertEqual(200, response.status_code)
-        self.assertEquals('application/json', response['content-type'])
-        self.assertEqual([], user1.get_perms(obj))
-        
-        # POST - success
-        data = {'user':user1.pk, 'permissions':['Perm1'], 'obj':obj.pk}
-        response = c.post(url % args, data)
-        self.assertEqual(200, response.status_code)
-        self.assertTemplateUsed(response, 'object_permissions/permissions/object_row.html')
-        self.assertEqual(['Perm1'], user1.get_perms(obj))
-
-    def test_permissions_generic_edit(self):
-        """
-        Tests adding permissions to a new object using the generic perm view
-        """
-        url = '/user/%s/permissions/%s/%s/'
-        args = (user1.pk, 'TestModel',obj.pk)
-        user1.grant('Perm1', obj)
-        
-        # anonymous user
-        response = c.get(url % args, follow=True)
-        self.assertEqual(200, response.status_code)
-        self.assertTemplateUsed(response, 'registration/login.html')
-        
-        # unauthorized user
-        self.assertTrue(c.login(username=user0.username, password='secret'))
-        response = c.get(url % args)
-        self.assertEqual(403, response.status_code)
-        
-        # invalid class
-        self.assertTrue(c.login(username=superuser.username, password='secret'))
-        response = c.get(url % (user1.pk, 'DoesNotExist',obj.pk))
-        self.assertEqual(404, response.status_code)
-        
-        # invalid user
-        response = c.get(url % (-1, 'TestModel',obj.pk))
-        self.assertEqual(404, response.status_code)
-        
-        #invalid object
-        response = c.get(url % (user1.pk, 'TestModel',-1))
-        self.assertEqual(404, response.status_code)
-        
-        # GET - success
-        response = c.get(url % args)
-        self.assertEqual(200, response.status_code)
-        self.assertTemplateUsed(response, 'object_permissions/permissions/form.html')
-        
-        # POST - no object
-        data = {'user':user1.pk, 'permissions':['Perm2']}
-        response = c.post(url % args, data)
-        self.assertEqual(200, response.status_code)
-        self.assertEquals('application/json', response['content-type'])
-        self.assertEqual(['Perm1'], user1.get_perms(obj))
-        
-        # POST - success
-        data = {'user':user1.pk, 'permissions':['Perm2','Perm3'], 'obj':obj.pk}
-        response = c.post(url % args, data)
-        self.assertEqual(200, response.status_code)
-        self.assertTemplateUsed(response, 'object_permissions/permissions/object_row.html')
-        self.assertEqual(set(['Perm2','Perm3']), set(user1.get_perms(obj)))
-        
-        # POST - no perms (removes all perms)
-        data = {'user':user1.pk, 'obj':obj.pk}
-        response = c.post(url % args, data)
-        self.assertEqual(200, response.status_code)
-        self.assertEquals('application/json', response['content-type'])
-        self.assertEquals('"TestModel_%s"' % obj.pk, response.content)
-        self.assertEqual([], user1.get_perms(obj))
+#    def test_permissions_generic_edit(self):
+#        """
+#        Tests adding permissions to a new object using the generic perm view
+#        """
+#        url = '/user/%s/permissions/%s/%s/'
+#        args = (user1.pk, 'TestModel',obj.pk)
+#        user1.grant('Perm1', obj)
+#        
+#        # anonymous user
+#        response = c.get(url % args, follow=True)
+#        self.assertEqual(200, response.status_code)
+#        self.assertTemplateUsed(response, 'registration/login.html')
+#        
+#        # unauthorized user
+#        self.assertTrue(c.login(username=user0.username, password='secret'))
+#        response = c.get(url % args)
+#        self.assertEqual(403, response.status_code)
+#        
+#        # invalid class
+#        self.assertTrue(c.login(username=superuser.username, password='secret'))
+#        response = c.get(url % (user1.pk, 'DoesNotExist',obj.pk))
+#        self.assertEqual(404, response.status_code)
+#        
+#        # invalid user
+#        response = c.get(url % (-1, 'TestModel',obj.pk))
+#        self.assertEqual(404, response.status_code)
+#        
+#        #invalid object
+#        response = c.get(url % (user1.pk, 'TestModel',-1))
+#        self.assertEqual(404, response.status_code)
+#        
+#        # GET - success
+#        response = c.get(url % args)
+#        self.assertEqual(200, response.status_code)
+#        self.assertTemplateUsed(response, 'object_permissions/permissions/form.html')
+#        
+#        # POST - no object
+#        data = {'user':user1.pk, 'permissions':['Perm2']}
+#        response = c.post(url % args, data)
+#        self.assertEqual(200, response.status_code)
+#        self.assertEquals('application/json', response['content-type'])
+#        self.assertEqual(['Perm1'], user1.get_perms(obj))
+#        
+#        # POST - success
+#        data = {'user':user1.pk, 'permissions':['Perm2','Perm3'], 'obj':obj.pk}
+#        response = c.post(url % args, data)
+#        self.assertEqual(200, response.status_code)
+#        self.assertTemplateUsed(response, 'object_permissions/permissions/object_row.html')
+#        self.assertEqual(set(['Perm2','Perm3']), set(user1.get_perms(obj)))
+#        
+#        # POST - no perms (removes all perms)
+#        data = {'user':user1.pk, 'obj':obj.pk}
+#        response = c.post(url % args, data)
+#        self.assertEqual(200, response.status_code)
+#        self.assertEquals('application/json', response['content-type'])
+#        self.assertEquals('"TestModel_%s"' % obj.pk, response.content)
+#        self.assertEqual([], user1.get_perms(obj))
     
 
 class TestObjectPermissionForm(TestCase):
