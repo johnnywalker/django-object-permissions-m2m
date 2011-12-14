@@ -576,6 +576,10 @@ def user_has_perm(user, perm, obj, groups=True):
         # not a valid permission
         return False
 
+    # short circuit for superusers
+    if user.is_superuser:
+        return True
+
     _model_name = model.__name__.lower()
     _perm = perm.lower()
 
@@ -646,6 +650,10 @@ def user_has_any_perms(user, obj, perms=None, groups=True):
     if len(perms) == 0:
         # if we have no perms to look for, return False!
         return False
+
+    # short circuit for superusers
+    if user.is_superuser:
+        return True
 
     q = Q()
     for perm in perms:
@@ -737,6 +745,14 @@ def user_has_all_perms(user, obj, perms, groups=True):
     else:
         perms = get_model_perms(model)
 
+    if len(perms) == 0:
+        # if we have no perms to look for, return False!
+        return False
+
+    # short circuit for superusers
+    if user.is_superuser:
+        return True
+
     # have to make sure at least 1 instance of model exists
     # such that all of the perms specified are assigned
     # to this user
@@ -745,10 +761,6 @@ def user_has_all_perms(user, obj, perms, groups=True):
         # limit query results to the instance passed in
         q &= Q(pk=obj.pk)
     
-    if len(perms) == 0:
-        # if we have no perms to look for, return False!
-        return False
-
     for perm in perms:
         _perm = perm.lower()
         lookup_keys = (
@@ -845,6 +857,7 @@ def get_users_any(obj, perms=None, groups=True):
         if groups:
             q |= Q(**{ 'groups__%s' % lookup_key : obj })
 
+    q |= Q(is_superuser=True)
     return User.objects.filter(q).distinct()
 
 
@@ -907,7 +920,8 @@ def get_users_all(obj, perms, groups=True):
                 _q |= Q(**{ '%s__isnull' % lookup_keys[1] : False })
 
         q &= _q
-    
+   
+    q |= Q(is_superuser=True)
     users = User.objects.filter(q)
     if instance:
         return users
@@ -918,6 +932,9 @@ def get_users_all(obj, perms, groups=True):
 
         users_with_matches = []
         for u in users.select_related():
+            if u.is_superuser:
+                users_with_matches.append(u)
+                continue
             instances = []
             for k in perm_keys:
                 _inst = set(getattr(u, k).values_list('pk', flat=True))
@@ -1126,6 +1143,10 @@ def user_get_objects_any_perms(user, model, perms=None, groups=True, **related):
         # if we have no perms to look for, return an EmptyQuerySet!
         return model.objects.none()
 
+    # short circuit for superusers
+    if user.is_superuser:
+        return model.objects.all()
+
     q = Q()
     for perm in perms:
         _perm = perm.lower()
@@ -1227,6 +1248,10 @@ def user_get_objects_all_perms(user, model, perms, groups=True, **related):
     if len(perms) == 0:
         # if we have no perms to look for, return an EmptyQuerySet!
         return model.objects.none()
+
+    # short circuit for superusers
+    if user.is_superuser:
+        return model.objects.all()
 
     q = Q()
     for perm in perms:

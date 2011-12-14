@@ -33,6 +33,8 @@ class TestModelPermissions(TestCase):
         user0.save()
         user1 = User(id=3, username='tester2')
         user1.save()
+        superUser = User(id=4, username='supertester', is_superuser=True)
+        superUser.save()
         
         object0 = TestModel.objects.create(name='test0')
         object0.save()
@@ -139,6 +141,61 @@ class TestModelPermissions(TestCase):
         def grant_unknown():
             grant(user1, 'UnknownPerm', object0)
         self.assertRaises(UnknownPermissionException, grant_unknown)
+    
+    def test_superuser(self):
+        """
+        Superuser tests
+        
+        Verifies:
+            * superuser has access to everything
+            * asking for invalid permissions returns false
+            * granting valid permissions do not generate any errors
+            * granting unknown permission raises error
+        """
+        # set up
+        superUser = User(id=4, username='supertester', is_superuser=True)
+        superUser.save()
+
+        # should have access
+        self.assertTrue(superUser.has_perm('Perm1', object0))
+        self.assertTrue(superUser.has_perm('Perm1', object1))
+        self.assertTrue(superUser.has_perm('Perm2', object0))
+        self.assertTrue(superUser.has_perm('Perm2', object1))
+        self.assertTrue(superUser.has_perm('Perm3', object0))
+        self.assertTrue(superUser.has_perm('Perm3', object1))
+        self.assertTrue(superUser.has_perm('Perm4', object0))
+        self.assertTrue(superUser.has_perm('Perm4', object1))
+
+        # other users should not have access
+        self.assertFalse(user1.has_perm('Perm1', object0))
+        
+        # shouldn't raise an error
+        grant(superUser, 'Perm1', object0)
+        
+        # nothing should have changed
+        self.assertTrue(superUser.has_perm('Perm1', object0))
+        
+        # should not have any invalid perms
+        self.assertFalse(superUser.has_perm('InvalidPerm', object0))
+
+        # should return all objects of type
+        query = user0.get_objects_all_perms(TestModel, ['Perm1', 'Perm2', 'Perm3', 'Perm4'])
+        self.assertEqual(2, query.count())
+        self.assertTrue(object0 in query)
+        self.assertTrue(object1 in query)
+        query = user0.get_objects_any_perms(TestModel, ['Perm1', 'Perm2', 'Perm3', 'Perm4'])
+        self.assertEqual(2, query.count())
+        self.assertTrue(object0 in query)
+        self.assertTrue(object1 in query)
+
+        def grant_unknown():
+            grant(superUser, 'UnknownPerm', object0)
+        self.assertRaises(UnknownPermissionException, grant_unknown)
+
+        # tear down
+        superUser.revoke_all(object0)
+        superUser.revoke_all(object1)
+        superUser.delete()
     
     def test_revoke_user_permissions(self):
         """
